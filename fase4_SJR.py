@@ -183,4 +183,26 @@ def simular(salida):
         lista.append(obj)
         return obj.describir()
 
+operaciones = [
+        ("Cliente válido (Elain Archeron)", lambda: add(c, Cliente("Elain Archeron", "flowergirl@velaris.com", "3001234567"))),
+        ("Cliente con correo inválido", lambda: add(c, Cliente("Dorian Havilliard", "malo@correo.com", "3109876543"))),
+        ("Cliente válido (Manon Blackbeak)", lambda: add(c, Cliente("Manon Blackbeak", "whitedemonwitch@kingofashes.com", "3205551234"))),
+        ("Cliente sin nombre", lambda: add(c, Cliente(None, "x@correo.com", "3001112233"))),
+        ("Sala válida", lambda: add(s, ReservaSala("Sala Andes", 50000, 10))),
+        ("Sala con tarifa negativa", lambda: add(s, ReservaSala("Sala Rota", -100, 5))),
+        ("Equipo válido", lambda: add(s, AlquilerEquipo("Portátil Pro", 30000, "Portátil"))),
+        ("Asesoría con nivel inválido", lambda: add(s, Asesoria("Asesoría X", 60000, "experto"))),
+        ("Asesoría senior válida", lambda: add(s, Asesoria("Asesoría Cloud", 80000, "senior"))),
+        ("Reserva exitosa: Elain reserva la sala 3 horas", lambda: add(r, Reserva(c[0], s[0], 3))),
+        ("Reserva con duración 0", lambda: add(r, Reserva(c[0], s[0], 0))),
+        ("Reserva de servicio no disponible", lambda: add(r, Reserva(c[1], AlquilerEquipo("Proyector", 40000, "Proyector", False), 2))),
+        ("Confirmar y procesar (impuesto 19%, descuento 10%)",
+         lambda: f"costo ${(r[0].confirmar(), r[0].procesar(0.19, 0.10))[1]:,.2f}"),
+        ("Cancelar una reserva ya procesada", lambda: r[0].cancelar()),
+        ("Procesar con descuento de 150% (error encadenado)",
+         lambda: (r.append(Reserva(c[1], s[2], 2)), r[1].confirmar(), r[1].procesar(0.19, 1.5))),
+        ("Error inesperado de Python (1/0)", lambda: 1 / 0),
+    ]
+
+
   
