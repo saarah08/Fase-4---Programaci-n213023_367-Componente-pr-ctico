@@ -355,3 +355,87 @@ def tabla(self, marco, columnas, anchos):
         if error:
             messagebox.showerror(texto.split(":", 1)[0].capitalize(), texto.split(": ", 1)[1])
           
+def refrescar(self):
+        for arbol in (self.t_cli, self.t_srv, self.t_res):
+            arbol.delete(*arbol.get_children())
+        for x in self.c:
+            self.t_cli.insert("", "end", values=(x.id, x.nombre, x.correo, x.telefono))
+        for x in self.s:
+            self.t_srv.insert("", "end", values=(x.id, type(x).__name__, x.describir(), "Sí" if x.disponible else "No"))
+        for i, x in enumerate(self.r):
+            costo = f"${x.costo:,.2f}" if x.costo is not None else "-"
+            self.t_res.insert("", "end", iid=str(i),
+                              values=(x.id, x.cliente.nombre, x.servicio.nombre, x.duracion, x.estado, costo))
+        self.f_res[0]["values"] = [f"{x.id} - {x.nombre}" for x in self.c]
+        self.f_res[1]["values"] = [f"{x.id} - {x.nombre}" for x in self.s]
+        self.cargar_log()
+
+    def guardar(self, lista, obj):
+        lista.append(obj)
+        return obj.describir()
+
+    def elegir(self, lista, combo):
+        if combo.current() < 0:
+            raise DatoInvalidoError("Falta seleccionar un elemento de la lista.")
+        return lista[combo.current()]
+
+    def numero(self, texto, nombre, clase=DatoInvalidoError):
+        try:
+            return float(texto)
+        except ValueError:
+            raise clase(f"{nombre} debe ser un número.")
+
+    def nuevo_cliente(self):
+        nombre, correo, telefono = (e.get() for e in self.f_cli)
+        self.accion("Registrar cliente", lambda: self.guardar(self.c, Cliente(nombre, correo, telefono)))
+        if self.estado.get().startswith("OK"):
+            for e in self.f_cli:
+                e.delete(0, "end")
+
+    def nuevo_servicio(self):
+        tipo, nombre, tarifa, detalle = (e.get() for e in self.f_srv)
+        disponible = self.disp.get()
+
+        def crear():
+            clase = {"Sala": ReservaSala, "Equipo": AlquilerEquipo, "Asesoría": Asesoria}.get(tipo)
+            if clase is None:
+                raise DatoInvalidoError("Elija un tipo de servicio.")
+            return self.guardar(self.s, clase(nombre, self.numero(tarifa, "La tarifa"), detalle, disponible))
+
+        self.accion(f"Crear servicio ({tipo})", crear)
+        if self.estado.get().startswith("OK"):
+            for e in self.f_srv[1:]:
+                e.delete(0, "end")
+
+    def nueva_reserva(self):
+        def crear():
+            d = self.numero(self.f_res[2].get(), "La duración")
+            d = int(d) if d.is_integer() else d
+            return self.guardar(self.r, Reserva(self.elegir(self.c, self.f_res[0]),
+                                                self.elegir(self.s, self.f_res[1]), d))
+
+        self.accion("Crear reserva", crear)
+
+    def reserva_sel(self):
+        seleccion = self.t_res.selection()
+        if not seleccion:
+            raise OperacionNoPermitidaError("Seleccione una reserva de la tabla.")
+        return self.r[int(seleccion[0])]
+
+    def confirmar(self):
+        self.accion("Confirmar reserva", lambda: (lambda x: x.confirmar() or x.describir())(self.reserva_sel()))
+
+    def cancelar(self):
+        self.accion("Cancelar reserva", lambda: (lambda x: x.cancelar() or x.describir())(self.reserva_sel()))
+
+    def procesar(self):
+        def hacer():
+            x = self.reserva_sel()
+            impuesto = self.numero(self.impuesto.get(), "El impuesto", CalculoError)
+            descuento = self.numero(self.descuento.get(), "El descuento", CalculoError)
+            return f"costo total ${x.procesar(impuesto, descuento):,.2f}"
+
+        self.accion("Procesar reserva", hacer)
+
+if __name__ == "__main__":
+    App().root.mainloop()
