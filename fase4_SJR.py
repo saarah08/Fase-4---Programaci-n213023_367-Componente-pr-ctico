@@ -245,3 +245,64 @@ class App:
             widgets.append(w)
         return widgets
   
+def tabla(self, marco, columnas, anchos):
+        contenedor = ttk.Frame(marco)
+        contenedor.pack(fill="both", expand=True, pady=(10, 0))
+        arbol = ttk.Treeview(contenedor, columns=columnas, show="headings", height=9)
+        for columna, ancho in zip(columnas, anchos):
+            arbol.heading(columna, text=columna.capitalize())
+            arbol.column(columna, width=ancho, anchor="w")
+        barra = ttk.Scrollbar(contenedor, orient="vertical", command=arbol.yview)
+        arbol.configure(yscrollcommand=barra.set)
+        arbol.pack(side="left", fill="both", expand=True)
+        barra.pack(side="right", fill="y")
+        return arbol
+
+    def armar_clientes(self):
+        marco = self.pestana("Clientes")
+        form = ttk.LabelFrame(marco, text="Nuevo cliente", padding=8)
+        form.pack(fill="x")
+        self.f_cli = self.campos(form, [("Nombre", None), ("Correo", None), ("Teléfono", None)])
+        ttk.Button(form, text="Registrar cliente", command=self.nuevo_cliente).grid(row=3, column=1, sticky="w", pady=4)
+        self.t_cli = self.tabla(marco, ("id", "nombre", "correo", "telefono"), (60, 220, 280, 140))
+
+    def armar_servicios(self):
+        marco = self.pestana("Servicios")
+        form = ttk.LabelFrame(marco, text="Nuevo servicio", padding=8)
+        form.pack(fill="x")
+        self.f_srv = self.campos(form, [("Tipo", ["Sala", "Equipo", "Asesoría"]), ("Nombre", None),
+                                        ("Tarifa (por hora)", None), ("Capacidad", None)])
+        self.f_srv[0].current(0)
+        self.f_srv[0].bind("<<ComboboxSelected>>", self.cambiar_tipo)
+        self.disp = tk.BooleanVar(value=True)
+        ttk.Checkbutton(form, text="Disponible", variable=self.disp).grid(row=4, column=1, sticky="w", padx=4)
+        ttk.Button(form, text="Crear servicio", command=self.nuevo_servicio).grid(row=5, column=1, sticky="w", pady=4)
+        self.t_srv = self.tabla(marco, ("id", "tipo", "descripcion", "disponible"), (60, 160, 580, 100))
+
+    def cambiar_tipo(self, _evento=None):
+        textos = {"Sala": "Capacidad", "Equipo": "Tipo de equipo", "Asesoría": "Nivel (junior / senior)"}
+        form = self.f_srv[3].master
+        for w in form.grid_slaves(row=3, column=0):
+            w.configure(text=textos.get(self.f_srv[0].get(), "Detalle"))
+
+    def armar_reservas(self):
+        marco = self.pestana("Reservas")
+        form = ttk.LabelFrame(marco, text="Nueva reserva", padding=8)
+        form.pack(fill="x")
+        self.f_res = self.campos(form, [("Cliente", []), ("Servicio", []), ("Duración (horas)", None)])
+        ttk.Button(form, text="Crear reserva", command=self.nueva_reserva).grid(row=3, column=1, sticky="w", pady=4)
+        acciones = ttk.LabelFrame(marco, text="Acciones sobre la reserva seleccionada", padding=8)
+        acciones.pack(fill="x", pady=(8, 0))
+        ttk.Label(acciones, text="Impuesto (0 a 1)").grid(row=0, column=0, padx=4)
+        self.impuesto = ttk.Entry(acciones, width=7)
+        self.impuesto.insert(0, "0.19")
+        self.impuesto.grid(row=0, column=1, padx=4)
+        ttk.Label(acciones, text="Descuento (0 a 1)").grid(row=0, column=2, padx=4)
+        self.descuento = ttk.Entry(acciones, width=7)
+        self.descuento.insert(0, "0")
+        self.descuento.grid(row=0, column=3, padx=4)
+        for i, (texto, comando) in enumerate([("Confirmar", self.confirmar), ("Procesar", self.procesar),
+                                              ("Cancelar", self.cancelar)]):
+            ttk.Button(acciones, text=texto, command=comando).grid(row=0, column=4 + i, padx=6)
+        self.t_res = self.tabla(marco, ("id", "cliente", "servicio", "duracion", "estado", "costo"),
+                                (50, 200, 240, 90, 110, 140))
