@@ -204,5 +204,44 @@ operaciones = [
         ("Error inesperado de Python (1/0)", lambda: 1 / 0),
     ]
 
+logging.info("===== INICIO DE LA SIMULACIÓN =====")
+    for i, (desc, f) in enumerate(operaciones, 1):
+        intentar(i, desc, f, salida)
+    salida(f"\nResumen: {len(c)} clientes, {len(s)} servicios, {len(r)} reservas. El programa NO se cayó.")
+    logging.info("===== FIN DE LA SIMULACIÓN =====")
 
+class App:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("Software FJ - Gestión de Clientes, Servicios y Reservas")
+        self.root.geometry("980x600")
+        self.c, self.s, self.r, self.n = [], [], [], 0
+        self.estado = tk.StringVar(value="Listo.")
+        self.barra = ttk.Label(self.root, textvariable=self.estado, anchor="w", padding=4)
+        self.barra.pack(side="bottom", fill="x")
+        self.tabs = ttk.Notebook(self.root)
+        self.tabs.pack(fill="both", expand=True, padx=8, pady=8)
+        self.armar_clientes()
+        self.armar_servicios()
+        self.armar_reservas()
+        self.armar_simulacion()
+        self.armar_log()
+        self.refrescar()
+  
+    def pestana(self, nombre):
+        marco = ttk.Frame(self.tabs, padding=10)
+        self.tabs.add(marco, text=nombre)
+        return marco
+
+    def campos(self, marco, lista):
+        widgets = []
+        for i, (texto, valores) in enumerate(lista):
+            ttk.Label(marco, text=texto).grid(row=i, column=0, sticky="w", padx=4, pady=3)
+            if valores is None:
+                w = ttk.Entry(marco, width=36)
+            else:
+                w = ttk.Combobox(marco, values=valores, state="readonly", width=33)
+            w.grid(row=i, column=1, sticky="w", padx=4, pady=3)
+            widgets.append(w)
+        return widgets
   
