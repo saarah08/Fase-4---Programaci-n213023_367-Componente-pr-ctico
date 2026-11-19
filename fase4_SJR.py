@@ -77,4 +77,110 @@ class Cliente(Entidad):
         if not (0 <= impuesto <= 1 and 0 <= descuento <= 1):
             raise CalculoError(f"Impuesto ({impuesto}) y descuento ({descuento}) deben estar entre 0 y 1.")
         return round(self.costo(duracion) * (1 - descuento) * (1 + impuesto), 2)
-      
+
+class ReservaSala(Servicio):
+    UNIDAD, MAXIMO = "horas", 12
+
+    def validar_detalle(self, detalle):
+        if not str(detalle).isdigit() or int(detalle) <= 0:
+            raise DatoInvalidoError(f"Capacidad inválida: {detalle!r}")
+
+    def costo(self, duracion):
+        return self.tarifa * duracion
+
+    def describir(self):
+        return f"Sala '{self.nombre}' (capacidad {self._detalle}) - ${self.tarifa:,.0f}/hora"
+
+class AlquilerEquipo(Servicio):
+    UNIDAD, MAXIMO = "días", 30
+
+    def validar_detalle(self, detalle):
+        if not detalle or not str(detalle).strip():
+            raise DatoInvalidoError("Falta el tipo de equipo.")
+
+    def costo(self, duracion):
+        return self.tarifa * duracion + 10000
+
+    def describir(self):
+        return f"Equipo '{self.nombre}' ({self._detalle}) - ${self.tarifa:,.0f}/día + $10,000 de transporte"
+
+class Asesoria(Servicio):
+    UNIDAD, MAXIMO = "horas", 8
+
+    def validar_detalle(self, detalle):
+        if detalle not in ("junior", "senior"):
+            raise DatoInvalidoError(f"Nivel inválido: {detalle!r} (use junior o senior)")
+
+    def costo(self, duracion):
+        return self.tarifa * duracion * (1.5 if self._detalle == "senior" else 1)
+
+    def describir(self):
+        return f"Asesoría '{self.nombre}' ({self._detalle}) - ${self.tarifa:,.0f}/hora"
+
+class Reserva(Entidad):
+    def __init__(self, cliente, servicio, duracion):
+        if not isinstance(cliente, Cliente) or not isinstance(servicio, Servicio):
+            raise ReservaError("La reserva necesita un Cliente y un Servicio válidos.")
+        if not servicio.disponible:
+            raise ServicioNoDisponibleError(f"'{servicio.nombre}' no está disponible.")
+        servicio.validar_duracion(duracion)
+        super().__init__()
+        self._cliente, self._servicio, self._duracion = cliente, servicio, duracion
+        self.estado, self.costo = "PENDIENTE", None
+
+    cliente = property(lambda self: self._cliente)
+    servicio = property(lambda self: self._servicio)
+    duracion = property(lambda self: self._duracion)
+
+    def confirmar(self):
+        if self.estado != "PENDIENTE":
+            raise OperacionNoPermitidaError(f"Reserva #{self.id}: no se puede confirmar, está {self.estado}.")
+        self.estado = "CONFIRMADA"
+
+    def cancelar(self):
+        if self.estado in ("CANCELADA", "PROCESADA"):
+            raise OperacionNoPermitidaError(f"Reserva #{self.id}: no se puede cancelar, está {self.estado}.")
+        self.estado = "CANCELADA"
+
+    def procesar(self, impuesto=0.19, descuento=0.0):
+        if self.estado != "CONFIRMADA":
+            raise OperacionNoPermitidaError(f"Reserva #{self.id}: solo se procesan las CONFIRMADAS (está {self.estado}).")
+        try:
+            costo = self._servicio.total(self._duracion, impuesto, descuento)
+        except ErrorFJ as origen:
+            raise ReservaError(f"No se pudo procesar la reserva #{self.id}.") from origen
+        else:
+            self.costo, self.estado = costo, "PROCESADA"
+            return costo
+        finally:
+            logging.info(f"Intento de procesar la reserva #{self.id} finalizado.")
+
+    def describir(self):
+        costo = f"${self.costo:,.2f}" if self.costo is not None else "sin calcular"
+        return f"Reserva #{self.id} | {self.cliente.nombre} | {self._servicio.nombre} | {self._duracion} | {self.estado} | {costo}"
+
+def intentar(num, desc, funcion, salida):
+    salida(f"[{num}] {desc}")
+    try:
+        resultado = funcion()
+    except ErrorFJ as e:
+        causa = f" (causa: {e.__cause__})" if e.__cause__ else ""
+        salida(f"    ERROR controlado: {e}{causa}")
+        logging.error(f"Operación {num} falló: {e}{causa}")
+    except Exception as e:
+        salida(f"    ERROR inesperado: {type(e).__name__}: {e}")
+        logging.error(f"Operación {num} error inesperado: {type(e).__name__}: {e}")
+    else:
+        salida(f"    OK: {resultado}")
+        logging.info(f"Operación {num} exitosa: {resultado}")
+    finally:
+        logging.info(f"Operación {num} finalizada.")
+
+def simular(salida):
+    c, s, r = [], [], []
+
+    def add(lista, obj):
+        lista.append(obj)
+        return obj.describir()
+
+  
