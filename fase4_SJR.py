@@ -47,4 +47,34 @@ class Cliente(Entidad):
 
     def describir(self):
         return f"Cliente #{self.id}: {self.nombre} | {self.correo} | {self.telefono}"
+      class Servicio(Entidad):
+    UNIDAD, MAXIMO = "horas", 1
+
+    def __init__(self, nombre, tarifa, detalle, disponible=True):
+        if not nombre or not nombre.strip():
+            raise DatoInvalidoError("El nombre del servicio es obligatorio.")
+        if isinstance(tarifa, bool) or not isinstance(tarifa, (int, float)) or tarifa <= 0:
+            raise DatoInvalidoError(f"Tarifa inválida: {tarifa!r}")
+        self.validar_detalle(detalle)
+        super().__init__()
+        self._nombre, self._tarifa, self._detalle, self.disponible = nombre.strip(), tarifa, detalle, disponible
+
+    nombre = property(lambda self: self._nombre)
+    tarifa = property(lambda self: self._tarifa)
+
+    @abstractmethod
+    def validar_detalle(self, detalle): ...
+      
+    @abstractmethod
+    def costo(self, duracion): ...
+
+    def validar_duracion(self, d):
+        if isinstance(d, bool) or not isinstance(d, (int, float)) or not 1 <= d <= self.MAXIMO:
+            raise DatoInvalidoError(f"Duración inválida ({d!r}): debe estar entre 1 y {self.MAXIMO} {self.UNIDAD}.")
+
+    def total(self, duracion, impuesto=0.0, descuento=0.0):
+        self.validar_duracion(duracion)
+        if not (0 <= impuesto <= 1 and 0 <= descuento <= 1):
+            raise CalculoError(f"Impuesto ({impuesto}) y descuento ({descuento}) deben estar entre 0 y 1.")
+        return round(self.costo(duracion) * (1 - descuento) * (1 + impuesto), 2)
       
