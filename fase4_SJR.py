@@ -306,3 +306,52 @@ def tabla(self, marco, columnas, anchos):
             ttk.Button(acciones, text=texto, command=comando).grid(row=0, column=4 + i, padx=6)
         self.t_res = self.tabla(marco, ("id", "cliente", "servicio", "duracion", "estado", "costo"),
                                 (50, 200, 240, 90, 110, 140))
+
+  def armar_simulacion(self):
+        marco = self.pestana("Simulación")
+        ttk.Button(marco, text="Ejecutar simulación de 16 operaciones", command=self.correr_simulacion).pack(anchor="w")
+        self.txt_sim = ScrolledText(marco, wrap="word", font=("Consolas", 10))
+        self.txt_sim.pack(fill="both", expand=True, pady=(10, 0))
+
+    def armar_log(self):
+        marco = self.pestana("Registro (logs)")
+        ttk.Button(marco, text="Actualizar", command=self.cargar_log).pack(anchor="w")
+        self.txt_log = ScrolledText(marco, wrap="none", font=("Consolas", 9))
+        self.txt_log.pack(fill="both", expand=True, pady=(10, 0))
+
+    def correr_simulacion(self):
+        self.txt_sim.delete("1.0", "end")
+
+        def salida(texto):
+            self.txt_sim.insert("end", texto + "\n")
+            self.txt_sim.see("end")
+            self.root.update_idletasks()
+
+        simular(salida)
+        self.cargar_log()
+
+    def cargar_log(self):
+        try:
+            with open("eventos.log", encoding="utf-8") as archivo:
+                contenido = archivo.read()
+        except OSError as error:
+            contenido = f"No se pudo leer el archivo de logs: {error}"
+        self.txt_log.delete("1.0", "end")
+        self.txt_log.insert("end", contenido)
+        self.txt_log.see("end")
+
+    def accion(self, desc, funcion):
+        self.n += 1
+        previa = self.t_res.selection()
+        lineas = []
+        intentar(self.n, desc, funcion, lineas.append)
+        texto = " ".join(linea.strip() for linea in lineas[1:])
+        error = texto.startswith("ERROR")
+        self.estado.set(texto)
+        self.barra.configure(foreground="red" if error else "green")
+        self.refrescar()
+        if previa:
+            self.t_res.selection_set(previa)
+        if error:
+            messagebox.showerror(texto.split(":", 1)[0].capitalize(), texto.split(": ", 1)[1])
+          
